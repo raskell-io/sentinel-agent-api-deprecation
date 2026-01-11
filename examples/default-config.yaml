@@ -1,0 +1,66 @@
+# Sentinel API Deprecation Agent - Default Configuration
+#
+# This file shows all available options with their default values.
+
+# Deprecated endpoints configuration
+endpoints:
+  # Example: Deprecated API endpoint
+  - id: legacy-users-api
+    path: /api/v1/users
+    methods: [GET, POST, PUT, DELETE]
+    status: deprecated
+    deprecated_at: "2024-01-01T00:00:00Z"
+    sunset_at: "2025-06-01T00:00:00Z"
+    replacement:
+      path: /api/v2/users
+      preserve_query: true
+    documentation_url: https://docs.example.com/migration/users-api
+    message: "The v1 Users API is deprecated. Please migrate to v2."
+    action:
+      type: warn
+    track_usage: true
+
+  # Example: Redirect endpoint
+  - id: old-products
+    path: /products/*
+    status: deprecated
+    sunset_at: "2025-03-01T00:00:00Z"
+    replacement:
+      path: /api/v2/products
+      preserve_query: true
+    action:
+      type: redirect
+      status_code: 308
+
+  # Example: Removed endpoint
+  - id: legacy-auth
+    path: /auth/legacy
+    status: removed
+    action:
+      type: block
+      status_code: 410
+
+# Global settings
+settings:
+  # Header names (following standards)
+  deprecation_header: Deprecation
+  sunset_header: Sunset
+  link_header: Link
+  notice_header: X-Deprecation-Notice
+
+  # Include deprecation headers on all matching requests
+  include_headers: true
+
+  # Action for endpoints past their sunset date
+  # Options: warn, block, redirect
+  past_sunset_action: warn
+
+  # Log all deprecated endpoint access
+  log_access: true
+
+# Metrics configuration
+metrics:
+  enabled: true
+  prefix: sentinel_api_deprecation
+  labels: {}
+  port: 0  # Set > 0 to enable metrics endpoint

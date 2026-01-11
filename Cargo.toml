@@ -1,0 +1,59 @@
+[package]
+name = "sentinel-agent-api-deprecation"
+version = "0.1.0"
+edition = "2021"
+authors = ["Raskell <hello@raskell.io>"]
+description = "API deprecation management agent for Sentinel proxy - sunset headers, usage tracking, and migration support"
+license = "Apache-2.0"
+repository = "https://github.com/raskell-io/sentinel-agent-api-deprecation"
+keywords = ["sentinel", "proxy", "agent", "api", "deprecation", "sunset"]
+categories = ["network-programming", "web-programming"]
+readme = "README.md"
+
+[dependencies]
+# Sentinel SDK
+sentinel-agent-sdk = { git = "https://github.com/raskell-io/sentinel-agent-rust-sdk.git", branch = "main" }
+
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "fs"] }
+async-trait = "0.1"
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
+
+# Time handling (for sunset dates)
+chrono = { version = "0.4", features = ["serde"] }
+
+# Regex for path matching
+regex = "1"
+
+# CLI argument parsing
+clap = { version = "4", features = ["derive"] }
+
+# Metrics
+prometheus = "0.13"
+
+# Glob pattern matching for paths
+globset = "0.4"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tempfile = "3"
+
+[[bin]]
+name = "sentinel-agent-api-deprecation"
+path = "src/main.rs"
+
+[lib]
+name = "sentinel_agent_api_deprecation"
+path = "src/lib.rs"
