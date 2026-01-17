@@ -9,7 +9,14 @@ use crate::metrics::DeprecationMetrics;
 use async_trait::async_trait;
 use chrono::Utc;
 use sentinel_agent_sdk::{Agent, Decision, Request, Response};
+use sentinel_agent_sdk::v2::{
+    AgentCapabilities, AgentCapabilitiesExt, AgentV2, DrainReason, HealthStatus,
+    MetricsReport, ShutdownReason,
+};
+// Import metric types directly from protocol crate
+use sentinel_agent_protocol::v2::GaugeMetric;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tracing::{debug, info, warn};
 
@@ -20,6 +27,8 @@ use tracing::{debug, info, warn};
 pub struct ApiDeprecationAgent {
     config: ApiDeprecationConfig,
     metrics: Arc<DeprecationMetrics>,
+    /// Whether the agent is draining (not accepting new requests)
+    draining: AtomicBool,
 }
 
 impl ApiDeprecationAgent {
@@ -43,6 +52,7 @@ impl ApiDeprecationAgent {
         Self {
             config,
             metrics,
+            draining: AtomicBool::new(false),
         }
     }
 
@@ -369,10 +379,100 @@ impl Agent for ApiDeprecationAgent {
     }
 }
 
+/// Protocol v2 implementation for API Deprecation Agent.
+///
+/// Provides capability negotiation, health reporting, metrics export,
+/// and lifecycle management.
+impl AgentV2 for ApiDeprecationAgent {
+    fn capabilities(&self) -> AgentCapabilities {
+        AgentCapabilities::new(
+            "api-deprecation",
+            "API Deprecation Agent",
+            env!("CARGO_PKG_VERSION"),
+        )
+        .with_streaming_body(false)
+        .with_config_push(true)
+        .with_health_reporting(true)
+        .with_metrics_export(true)
+        .with_concurrent_requests(100)
+        .with_cancellation(false)
+        .with_flow_control(false)
+        .with_max_processing_time_ms(1000)
+        .with_health_interval_ms(10000)
+    }
+
+    fn health_status(&self) -> HealthStatus {
+        if self.draining.load(Ordering::Relaxed) {
+            HealthStatus::degraded(
+                "api-deprecation",
+                vec!["new_requests".to_string()],
+                1.0,
+            )
+        } else {
+            HealthStatus::healthy("api-deprecation")
+        }
+    }
+
+    fn metrics_report(&self) -> Option<MetricsReport> {
+        let mut report = MetricsReport::new("api-deprecation", 10000);
+
+        // Add endpoint count gauge
+        report.gauges.push(GaugeMetric::new(
+            "api_deprecation_endpoints_total",
+            self.config.endpoints.len() as f64,
+        ));
+
+        // Add counters for each endpoint's days until sunset
+        for endpoint in &self.config.endpoints {
+            if let Some(sunset) = &endpoint.sunset_at {
+                let days = (*sunset - Utc::now()).num_days();
+                let mut metric = GaugeMetric::new(
+                    "api_deprecation_days_until_sunset",
+                    days as f64,
+                );
+                metric.labels.insert("endpoint_id".to_string(), endpoint.id.clone());
+                metric.labels.insert("path".to_string(), endpoint.path.clone());
+                report.gauges.push(metric);
+            }
+        }
+
+        // Add request counters from our Prometheus metrics (if we have any recorded)
+        // Note: In a real implementation, we'd aggregate from self.metrics
+        // For now, we just report the endpoint configuration
+
+        if report.is_empty() {
+            None
+        } else {
+            Some(report)
+        }
+    }
+
+    fn on_shutdown(&self, reason: ShutdownReason, grace_period_ms: u64) {
+        info!(
+            ?reason,
+            grace_period_ms,
+            "API deprecation agent shutting down"
+        );
+        self.draining.store(true, Ordering::Relaxed);
+    }
+
+    fn on_drain(&self, duration_ms: u64, reason: DrainReason) {
+        info!(
+            ?reason,
+            duration_ms,
+            "API deprecation agent draining"
+        );
+        self.draining.store(true, Ordering::Relaxed);
+    }
+
+    fn on_stream_closed(&self) {
+        debug!("API deprecation agent stream closed");
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::DeprecationStatus;
 
     fn test_config() -> ApiDeprecationConfig {
         let yaml = r#"

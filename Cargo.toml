@@ -1,6 +1,6 @@
 [package]
 name = "sentinel-agent-api-deprecation"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Raskell <hello@raskell.io>"]
 description = "API deprecation management agent for Sentinel proxy - sunset headers, usage tracking, and migration support"
@@ -11,8 +11,9 @@ categories = ["network-programming", "web-programming"]
 readme = "README.md"
 
 [dependencies]
-# Sentinel SDK
-sentinel-agent-sdk = "0.1"
+# Sentinel SDK (v2 protocol support)
+sentinel-agent-sdk = { path = "../sentinel-agent-rust-sdk" }
+sentinel-agent-protocol = "0.3"
 
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "sync", "time", "fs"] }

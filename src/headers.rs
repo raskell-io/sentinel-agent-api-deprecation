@@ -118,8 +118,7 @@ pub fn parse_http_date(s: &str) -> Option<DateTime<Utc>> {
     use chrono::NaiveDateTime;
 
     // Try RFC 7231 format first (strip " GMT" suffix and parse as naive, then add UTC)
-    if s.ends_with(" GMT") {
-        let without_tz = &s[..s.len() - 4];
+    if let Some(without_tz) = s.strip_suffix(" GMT") {
         if let Ok(naive) = NaiveDateTime::parse_from_str(without_tz, "%a, %d %b %Y %H:%M:%S") {
             return Some(naive.and_utc());
         }

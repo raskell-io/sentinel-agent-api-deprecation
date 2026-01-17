@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 /// Main configuration for the API Deprecation agent.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ApiDeprecationConfig {
     /// List of deprecated endpoints
@@ -22,16 +22,6 @@ pub struct ApiDeprecationConfig {
     /// Metrics configuration
     #[serde(default)]
     pub metrics: MetricsConfig,
-}
-
-impl Default for ApiDeprecationConfig {
-    fn default() -> Self {
-        Self {
-            endpoints: Vec::new(),
-            settings: GlobalSettings::default(),
-            metrics: MetricsConfig::default(),
-        }
-    }
 }
 
 impl ApiDeprecationConfig {
@@ -139,13 +129,13 @@ impl DeprecatedEndpoint {
         }
 
         // Validate redirect has a target
-        if matches!(self.action, DeprecationAction::Redirect { .. }) {
-            if self.replacement.is_none() {
-                anyhow::bail!(
-                    "Redirect action requires replacement info for endpoint: {}",
-                    self.id
-                );
-            }
+        if matches!(self.action, DeprecationAction::Redirect { .. })
+            && self.replacement.is_none()
+        {
+            anyhow::bail!(
+                "Redirect action requires replacement info for endpoint: {}",
+                self.id
+            );
         }
 
         Ok(())
