@@ -394,14 +394,14 @@ impl AgentHandlerV2 for ApiDeprecationAgent {
         .with_event(EventType::ResponseHeaders)
         .with_features(AgentFeatures {
             streaming_body: false,
+            websocket: false,
+            guardrails: false,
             config_push: true,
             health_reporting: true,
             metrics_export: true,
             concurrent_requests: 100,
             cancellation: false,
             flow_control: false,
-            max_processing_time_ms: 1000,
-            health_interval_ms: 10000,
         })
     }
 
@@ -469,7 +469,7 @@ impl AgentHandlerV2 for ApiDeprecationAgent {
         self.draining.store(true, Ordering::Relaxed);
     }
 
-    fn on_stream_closed(&self) {
+    async fn on_stream_closed(&self) {
         debug!("API deprecation agent stream closed");
     }
 }
